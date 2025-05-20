@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safety Bingo (Test)</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f9;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+    h1 {
+      font-size: 2.2vw;
+      margin: 1vh 0;
+      color: #2196f3;
+    }
+    .countdown {
+      font-size: 1.6vw;
+    }
+    .recent-calls {
+      font-size: 2.2vw;
+      margin-top: 1vh;
+    }
+    .recent-calls span {
+      background: #e0e0e0;
+      padding: 0.3vw 0.8vw;
+      margin: 0.3vw;
+      border-radius: 0.5vw;
+      display: inline-block;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5vw;
+      width: 95vw;
+      height: 75vh;
+    }
+    .cell {
+      background: white;
+      border-radius: 0.4vw;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      font-weight: bold;
+      font-size: 1.3vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .called {
+      background-color: #4caf50;
+      color: white;
+    }
+    .header {
+      background-color: #2196f3;
+      color: white;
+      font-size: 1.5vw;
+    }
+    #resetButton {
+      margin-top: 2vh;
+      padding: 1vh 2vw;
+      font-size: 1.6vw;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      border-radius: 0.5vw;
+      cursor: pointer;
+    }
+    #resetButton:hover {
+      background-color: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <h1>Safety Bingo (Test Mode)</h1>
+  <div class="countdown" id="countdown">Next number in: --:--:--</div>
+  <div class="recent-calls" id="lastCalled">Last 5 called:<br> --</div>
+  <div class="grid" id="bingoGrid"></div>
+  <button id="resetButton" onclick="resetGame()">Reset Game</button>
+
+  <script>
+    const headers = ['S', 'A', 'F', 'T', 'Y'];
+    const columns = {
+      S: Array.from({ length: 15 }, (_, i) => i + 1),
+      A: Array.from({ length: 15 }, (_, i) => i + 16),
+      F: Array.from({ length: 15 }, (_, i) => i + 31),
+      T: Array.from({ length: 15 }, (_, i) => i + 46),
+      Y: Array.from({ length: 15 }, (_, i) => i + 61)
+    };
+    const fullList = [...columns.S, ...columns.A, ...columns.F, ...columns.T, ...columns.Y];
+    const preCalled = [];
+
+    let stored = JSON.parse(localStorage.getItem('calledNumbers') || '[]');
+    let calledNumbers = [...new Set([...preCalled, ...stored])];
+    let lastCallTime = localStorage.getItem('lastCallTime');
+
+    function getLetterPrefix(number) {
+      if (number >= 1 && number <= 15) return 'S';
+      if (number >= 16 && number <= 30) return 'A';
+      if (number >= 31 && number <= 45) return 'F';
+      if (number >= 46 && number <= 60) return 'T';
+      if (number >= 61 && number <= 75) return 'Y';
+      return '';
+    }
+
+    function buildGrid() {
+      const grid = document.getElementById('bingoGrid');
+      headers.forEach(header => {
+        const cell = document.createElement('div');
+        cell.className = 'cell header';
+        cell.textContent = header;
+        grid.appendChild(cell);
+      });
+      for (let i = 0; i < 15; i++) {
+        headers.forEach(header => {
+          const number = columns[header][i];
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.textContent = number;
+          if (calledNumbers.includes(number)) {
+            cell.classList.add('called');
+          }
+          grid.appendChild(cell);
+        });
+      }
+    }
+
+    // TEST MODE: Pick a new number every 30 seconds
+    function calculateNextWeekdayCallTime() {
+      const now = new Date();
+      let next = new Date(now);
+      next.setUTCHours(10, 0, 0, 0);
+      if (now.getUTCHours() >= 10) {
+        next.setUTCDate(next.getUTCDate() + 1);
+      }
+      while (next.getUTCDay() === 0 || next.getUTCDay() === 6) {
+        next.setUTCDate(next.getUTCDate() + 1);
+      }
+      return next.getTime(); // 30 seconds from now
+    }
+
+    const nextCallTime = calculateNextWeekdayCallTime();
+
+    function updateCountdown() {
+      const now = Date.now();
+      const diff = nextCallTime - now;
+      if (diff <= 0) {
+        callNextNumber();
+        return;
+      }
+      const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+      const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+      const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+      document.getElementById('countdown').textContent = `Next number in: ${hours}:${minutes}:${seconds}`;
+    }
+
+    function callNextNumber() {
+      const available = fullList.filter(n => !calledNumbers.includes(n));
+      if (available.length === 0) return;
+      const next = available[Math.floor(Math.random() * available.length)];
+      calledNumbers.push(next);
+      localStorage.setItem('calledNumbers', JSON.stringify(calledNumbers));
+      localStorage.setItem('lastCallTime', new Date().toISOString());
+      location.reload();
+    }
+
+    function showLastCalled() {
+      const last5 = calledNumbers.slice(-5).reverse();
+      document.getElementById('lastCalled').innerHTML = "Last 5 called:<br>" +
+        last5.map(n => `<span>${getLetterPrefix(n)}${n}</span>`).join(" ");
+    }
+
+    function resetGame() {
+      if (confirm("Are you sure you want to reset the game?")) {
+        localStorage.clear();
+        window.location.href = window.location.href;
+      }
+    }
+
+    buildGrid();
+    showLastCalled();
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  </script>
+</body>
+</html>
