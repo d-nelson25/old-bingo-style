@@ -3,29 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Safety Bingo (Test)</title>
+  <title>Safety Bingo</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
       background: #f4f4f9;
-      color: #333;
       margin: 0;
       padding: 0;
-      height: 100vh;
-      width: 100vw;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      overflow: hidden;
     }
     h1 {
-      font-size: 2.2vw;
+      font-size: 2.5vw;
       margin: 1vh 0;
       color: #2196f3;
     }
     .countdown {
       font-size: 1.6vw;
+      animation: fadeIn 1s ease;
     }
     .recent-calls {
       font-size: 2.2vw;
@@ -43,46 +39,77 @@
       grid-template-columns: repeat(5, 1fr);
       gap: 0.5vw;
       width: 95vw;
-      height: 75vh;
+      margin: 1vh 0;
+      animation: fadeGrid 1.5s ease;
     }
     .cell {
-      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 4vw;
+      background: #fff;
       border-radius: 0.4vw;
       box-shadow: 0 1px 2px rgba(0,0,0,0.1);
       font-weight: bold;
       font-size: 1.3vw;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      transition: all 0.3s ease;
     }
     .called {
       background-color: #4caf50;
       color: white;
     }
     .header {
-      background-color: #2196f3;
+      background: #2196f3;
       color: white;
-      font-size: 1.5vw;
+    }
+    .flash {
+      animation: flash 1s ease-in-out;
+    }
+    .banner {
+      background: #4caf50;
+      color: white;
+      font-size: 2vw;
+      padding: 1vh 2vw;
+      margin-top: 1vh;
+      border-radius: 0.5vw;
+      animation: slideDown 0.7s ease-out;
     }
     #resetButton {
-      margin-top: 2vh;
+      margin: 2vh 0;
       padding: 1vh 2vw;
       font-size: 1.6vw;
-      background-color: #f44336;
+      background: #f44336;
       color: white;
       border: none;
       border-radius: 0.5vw;
       cursor: pointer;
     }
     #resetButton:hover {
-      background-color: #d32f2f;
+      background: #d32f2f;
+    }
+    @keyframes flash {
+      0%, 100% { background-color: #4caf50; }
+      50% { background-color: #81c784; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes fadeGrid {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
   </style>
 </head>
 <body>
-  <h1>Safety Bingo (Test Mode)</h1>
+  <h1>Safety Bingo</h1>
   <div class="countdown" id="countdown">Next number in: --:--:--</div>
   <div class="recent-calls" id="lastCalled">Last 5 called:<br> --</div>
+  <div id="banner" class="banner" style="display:none;"></div>
   <div class="grid" id="bingoGrid"></div>
   <button id="resetButton" onclick="resetGame()">Reset Game</button>
 
@@ -96,55 +123,53 @@
       Y: Array.from({ length: 15 }, (_, i) => i + 61)
     };
     const fullList = [...columns.S, ...columns.A, ...columns.F, ...columns.T, ...columns.Y];
-    const preCalled = [];
+    const preCalled = [8,27,52,64,3,56,68,22,4,66,57,61,28,18,40,5,49,51,45,54,55,7,75,23,15,20,12,73,34,47,60,42,1,74,30,72,24,32,59,44,69,26,38,17];
 
     let stored = JSON.parse(localStorage.getItem('calledNumbers') || '[]');
     let calledNumbers = [...new Set([...preCalled, ...stored])];
     let lastCallTime = localStorage.getItem('lastCallTime');
+    let newCalled = parseInt(localStorage.getItem("lastNewCalled"));
 
-    function getLetterPrefix(number) {
-      if (number >= 1 && number <= 15) return 'S';
-      if (number >= 16 && number <= 30) return 'A';
-      if (number >= 31 && number <= 45) return 'F';
-      if (number >= 46 && number <= 60) return 'T';
-      if (number >= 61 && number <= 75) return 'Y';
-      return '';
+    function getLetterPrefix(n) {
+      if (n <= 15) return 'S';
+      if (n <= 30) return 'A';
+      if (n <= 45) return 'F';
+      if (n <= 60) return 'T';
+      return 'Y';
     }
 
     function buildGrid() {
       const grid = document.getElementById('bingoGrid');
-      headers.forEach(header => {
-        const cell = document.createElement('div');
-        cell.className = 'cell header';
-        cell.textContent = header;
-        grid.appendChild(cell);
+      headers.forEach(h => {
+        const c = document.createElement('div');
+        c.className = 'cell header';
+        c.textContent = h;
+        grid.appendChild(c);
       });
       for (let i = 0; i < 15; i++) {
-        headers.forEach(header => {
-          const number = columns[header][i];
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.textContent = number;
-          if (calledNumbers.includes(number)) {
-            cell.classList.add('called');
+        headers.forEach(h => {
+          const num = columns[h][i];
+          const c = document.createElement('div');
+          c.className = 'cell';
+          c.textContent = num;
+          if (calledNumbers.includes(num)) {
+            c.classList.add('called');
           }
-          grid.appendChild(cell);
+          if (num === newCalled) {
+            c.classList.add('flash');
+          }
+          grid.appendChild(c);
         });
       }
     }
 
-    // TEST MODE: Pick a new number every 30 seconds
     function calculateNextWeekdayCallTime() {
       const now = new Date();
       let next = new Date(now);
       next.setUTCHours(10, 0, 0, 0);
-      if (now.getUTCHours() >= 10) {
-        next.setUTCDate(next.getUTCDate() + 1);
-      }
-      while (next.getUTCDay() === 0 || next.getUTCDay() === 6) {
-        next.setUTCDate(next.getUTCDate() + 1);
-      }
-      return next.getTime(); // 30 seconds from now
+      if (now.getUTCHours() >= 10) next.setUTCDate(next.getUTCDate() + 1);
+      while ([0,6].includes(next.getUTCDay())) next.setUTCDate(next.getUTCDate() + 1);
+      return next.getTime();
     }
 
     const nextCallTime = calculateNextWeekdayCallTime();
@@ -152,36 +177,40 @@
     function updateCountdown() {
       const now = Date.now();
       const diff = nextCallTime - now;
-      if (diff <= 0) {
-        callNextNumber();
-        return;
-      }
-      const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
-      const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-      const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-      document.getElementById('countdown').textContent = `Next number in: ${hours}:${minutes}:${seconds}`;
+      if (diff <= 0) return callNextNumber();
+      const h = String(Math.floor(diff / 3600000)).padStart(2,'0');
+      const m = String(Math.floor((diff % 3600000)/60000)).padStart(2,'0');
+      const s = String(Math.floor((diff % 60000)/1000)).padStart(2,'0');
+      document.getElementById('countdown').textContent = `Next number in: ${h}:${m}:${s}`;
     }
 
     function callNextNumber() {
       const available = fullList.filter(n => !calledNumbers.includes(n));
-      if (available.length === 0) return;
-      const next = available[Math.floor(Math.random() * available.length)];
-      calledNumbers.push(next);
+      if (!available.length) return;
+      newCalled = available[Math.floor(Math.random() * available.length)];
+      localStorage.setItem("lastNewCalled", newCalled);
+      calledNumbers.push(newCalled);
       localStorage.setItem('calledNumbers', JSON.stringify(calledNumbers));
       localStorage.setItem('lastCallTime', new Date().toISOString());
-      location.reload();
+      if (newCalled && fullList.includes(newCalled)) {
+    document.getElementById("banner").style.display = "block";
+    // (moved banner update into onload logic) `🎉 ${getLetterPrefix(newCalled)}${newCalled} Just Called!`;
+    localStorage.removeItem("lastNewCalled");
+  }
+      // (moved banner update into onload logic) `🎉 ${getLetterPrefix(newCalled)}${newCalled} Just Called!`;
+      setTimeout(() => location.reload(), 2000);
     }
 
     function showLastCalled() {
       const last5 = calledNumbers.slice(-5).reverse();
-      document.getElementById('lastCalled').innerHTML = "Last 5 called:<br>" +
-        last5.map(n => `<span>${getLetterPrefix(n)}${n}</span>`).join(" ");
+      document.getElementById('lastCalled').innerHTML = "Last 5 called:<br>" + last5.map(n => `<span>${getLetterPrefix(n)}${n}</span>`).join(" ");
     }
 
     function resetGame() {
       if (confirm("Are you sure you want to reset the game?")) {
-        localStorage.clear();
-        window.location.href = window.location.href;
+        localStorage.removeItem('calledNumbers');
+        localStorage.removeItem('lastCallTime');
+        location.reload();
       }
     }
 
